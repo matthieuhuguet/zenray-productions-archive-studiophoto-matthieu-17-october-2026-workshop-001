@@ -1,0 +1,11 @@
+# Project workspace (17 October 2026)
+
+- Project ID: studiophoto-matthieu-17-october-2026. (17 October 2026)
+- Read the global doctrine at /Users/zenray/.claude/CLAUDE.md and use the zenray-assets skill. (17 October 2026)
+- Read canonical feedback: /Users/zenray/.claude/Memory1/Projects/studiophoto-matthieu-17-october-2026/FEEDBACK.md. Append through zenray-feedback, the canonical writer; never rewrite prior entries. (17 October 2026)
+- Pinned rules, read first: /Users/zenray/.claude/Memory1/Projects/studiophoto-matthieu-17-october-2026/Rules.md. Add one with feedback.py add studiophoto-matthieu-17-october-2026 "<rule>" --kind rule. (17 October 2026)
+
+@/Users/zenray/.claude/Memory1/Projects/studiophoto-matthieu-17-october-2026/Rules.md
+
+- Work in /Users/zenray/.claude/tmp/tmp-studiophoto-matthieu-17-october-2026; keep durable knowledge in /Users/zenray/.claude/Memory1/Projects/studiophoto-matthieu-17-october-2026. Linked production directories remain in place. (17 October 2026)
+- Assets watches registered sources automatically. A local entry is not proof of verified cloud backup. (17 October 2026)
