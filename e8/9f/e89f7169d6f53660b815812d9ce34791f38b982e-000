@@ -1,0 +1,30 @@
+# Color grade proposals driven by Grades.json. 17 October 2026
+# FR : applique chaque look de Grades.json à chaque source, sauve les PNG pleine résolution dans Graded/.
+import json, os, sys
+import numpy as np
+from PIL import Image
+
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project folder = parent of Scripts/, survives any rename (17 October 2026)
+cfg = json.load(open(os.path.join(root, "Grades.json")))
+out = os.path.join(root, "Graded"); os.makedirs(out, exist_ok=True)
+
+def grade(img, g):
+    x = np.asarray(img.convert("RGB"), dtype=np.float32) / 255.0
+    x = x * (2.0 ** g["exposure"])
+    x = (x - 0.5) * g["contrast"] + 0.5
+    lum = (0.2126 * x[..., 0] + 0.7152 * x[..., 1] + 0.0722 * x[..., 2])[..., None]
+    x = lum + (x - lum) * g["saturation"]
+    t, ti = g["temperature"], g["tint"]
+    x = x + np.array([t, ti * -0.5, -t], dtype=np.float32) * 0.5
+    x = x + np.array(g["shadow_tint"], dtype=np.float32) * (1 - lum)
+    x = x + np.array(g["highlight_tint"], dtype=np.float32) * lum
+    x = g["lift"] + x * (1 - g["lift"])
+    return Image.fromarray((np.clip(x, 0, 1) * 255 + 0.5).astype(np.uint8))
+
+paths = []
+for sid, src in cfg["sources"].items():
+    im = Image.open(src if os.path.isabs(src) else os.path.join(root, src))
+    for name, g in cfg["grades"].items():
+        p = os.path.join(out, f"Src{sid}_{name}.png")
+        grade(im, g).save(p); paths.append(p)
+print("\n".join(paths))

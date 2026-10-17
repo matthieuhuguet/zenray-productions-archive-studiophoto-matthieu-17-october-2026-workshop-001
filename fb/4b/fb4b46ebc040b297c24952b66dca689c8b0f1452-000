@@ -1,0 +1,21 @@
+# Skin tone statistics (median OKLab L, chroma, hue, sRGB) inside the face box. 17 October 2026
+# FR : mesure le teint (médiane L, chroma, teinte, sRGB) dans la boîte du visage, pour comparer un grade à l'original.
+import json, sys, os
+import numpy as np
+from PIL import Image
+sys.path.insert(0, os.path.dirname(__file__))
+from Grade2 import dec, to_lab, ROOT
+def stats(path, sid):
+    a = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32) / 255
+    m = np.asarray(Image.open(f"{ROOT}/Masks/Src{sid}_person.png").convert("L"), dtype=np.float32) / 255
+    fx, fy, fw, fh = json.load(open(f"{ROOT}/Masks/Src{sid}_face.json"))["face"]
+    y0, y1, x0, x1 = int(fy + .45 * fh), int(fy + .95 * fh), int(fx + .12 * fw), int(fx + .88 * fw)   # cheeks to chin, no hair, no brows
+    lab = to_lab(dec(a[y0:y1, x0:x1])); mm = m[y0:y1, x0:x1] > .95
+    L, A, B = lab[..., 0], lab[..., 1], lab[..., 2]; C = np.hypot(A, B); H = np.degrees(np.arctan2(B, A)) % 360
+    k = mm & (H > 15) & (H < 80) & (L > .4) & (C > .03)
+    rgb = (a[y0:y1, x0:x1][k] * 255)
+    return dict(L=np.median(L[k]), C=np.median(C[k]), h=np.median(H[k]), rgb=np.median(rgb, 0).round(0), n=int(k.sum()))
+if __name__ == "__main__":
+    sid = sys.argv[1]
+    for p in sys.argv[2:]:
+        s = stats(p, sid); print(f"{os.path.basename(p):40s} L={s['L']:.3f} C={s['C']:.3f} h={s['h']:.1f} rgb={s['rgb']} n={s['n']}")

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skin Bg Picker</title>
+<!-- 17 October 2026. Sliders for skin hue and background. Maths identical to Scripts/Compose.py. -->
+<style>
+:root{
+  --bg:#f4f4f2; --panel:#ffffff; --ink:#1b1b1a; --muted:#6c6c68; --line:#dcdcd7; --accent:#cc7c5e; --accent-ink:#ffffff;
+  --sans:'InterVariable','Inter','Hiragino Sans W4','Hiragino Sans',system-ui,sans-serif;
+  --serif:'AnthropicSerif','Hiragino Mincho ProN W3',Georgia,serif;
+  --mono:'AnthropicMono',ui-monospace,monospace;
+  --gap:16px; --radius:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141413;--panel:#1d1d1b;--ink:#ecebe8;--muted:#9a9993;--line:#34332f;}}
+:root[data-theme="dark"]{--bg:#141413;--panel:#1d1d1b;--ink:#ecebe8;--muted:#9a9993;--line:#34332f;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 14px/1.45 var(--sans);}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:var(--gap);padding:var(--gap);max-width:1500px;margin:0 auto;align-items:start}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;justify-content:center;position:sticky;top:var(--gap)}
+canvas{max-width:100%;max-height:calc(100vh - 80px);height:auto;border-radius:8px;display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+h2{margin:0;font:400 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline}
+.row label{font-size:13px}
+.row output{font:400 13px var(--serif);font-variant-numeric:tabular-nums;color:var(--muted)}
+.row input[type=range]{grid-column:1/3;width:100%;accent-color:var(--accent)}
+select,button,textarea{font:400 13px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+select{width:100%}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+pre{margin:0;font:400 12px/1.4 var(--mono);white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;max-height:140px;overflow:auto}
+.hint{color:var(--muted);font-size:12px}
+.hidden{display:none}
+.fgrid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.fgrid figure{margin:0}
+.fgrid canvas{height:340px;width:auto;max-width:100%;max-height:none;border-radius:8px;display:block}
+.fgrid figcaption{font-size:13px;padding:6px 2px 0;display:flex;justify-content:space-between;gap:8px}
+.fctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 18px}
+.sheet{max-width:1500px;margin:0 auto;padding:0 var(--gap) var(--gap)}
+.sheet .panel{gap:12px}
+.sheet .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.sheet .grid{grid-template-columns:1fr}}
+.sheet figure{margin:0;border:2px solid transparent;border-radius:10px;padding:6px;cursor:pointer;background:var(--bg)}
+.sheet figure.sel{border-color:var(--accent)}
+.sheet canvas{max-height:none;width:100%}
+.sheet figcaption{font-size:13px;padding:6px 2px 0;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="panel" id="panel">
+    <h2>Image</h2>
+    <select id="src"></select>
+    <div id="controls"></div>
+    <div class="btns">
+      <button id="hold" title="Maintenir pour voir l'original">Voir l'original (maintenir)</button>
+      <button id="reset">Valeurs de départ</button>
+      <button id="debug">Retour au debug rouge</button>
+    </div>
+    <h2>Valeurs à coller dans /zenray-edit</h2>
+    <pre id="out"></pre>
+    <div class="btns"><button class="primary" id="copy">Copier les valeurs</button><button id="paste">Coller des valeurs</button><span class="hint" id="status"></span></div>
+  </div>
+</div>
+<section class="sheet">
+  <div class="panel">
+    <h2>Planche : 4 fonds gris (même peau et chemise que ci-dessus)</h2>
+    <div class="row"><label for="lvl">Noir ↔ blanc (les 4 vues)</label><output id="lvlOut"></output><input id="lvl" type="range" min="0" max="1" step="0.005"></div>
+    <div class="grid" id="sheetGrid"></div>
+    <span class="hint">Clique une vue pour la choisir : le fond du haut et les valeurs copiées suivent.</span>
+  </div>
+</section>
+<section class="sheet">
+  <div class="panel">
+    <h2>Formats : la vue actuelle recadrée, centrée sur les yeux</h2>
+    <div class="fctl" id="formatsControls"></div>
+    <div class="fgrid" id="fgrid"></div>
+    <span class="hint">Chaque format prend le plus grand cadre possible, divisé par le zoom. Les valeurs copiées contiennent ces réglages, tous les formats sont exportés ensuite.</span>
+  </div>
+</section>
+<script>
+"use strict";
+// ---- CONFIG: every number the UI exposes lives here (HDA interface). Defaults reproduce the debug overlay exactly. ----
+const ASSETS = __ASSETS__;
+const DEFAULTS = __DEFAULTS__;
+const GRAYS = __GRAYS__;   // name -> [hue deg, chroma]
+const SPEC = [
+  {sec:"Peau", path:"skin.blue_to_natural", label:"Teinte : bleu → naturel", min:0, max:1, step:0.01, fmt:v=>Math.round(v*100)+" %"},
+  {sec:"Peau", path:"skin.hue_fine_deg", label:"Réglage fin de la teinte", min:-30, max:30, step:0.5, fmt:v=>v.toFixed(1)+"°"},
+  {sec:"Peau", path:"skin.saturation", label:"Saturation de la peau", min:0.5, max:1.5, step:0.01, fmt:v=>v.toFixed(2)},
+  {sec:"Peau", path:"skin.light", label:"Lumière de la peau", min:-0.1, max:0.1, step:0.005, fmt:v=>(v>0?"+":"")+v.toFixed(3)},
+  {sec:"Chemise et cheveux", path:"shirt.cast_to_neutral", label:"Reflet cyan → neutre", min:0, max:1, step:0.01, fmt:v=>Math.round(v*100)+" %"},
+  {sec:"Cadre", path:"frame.crop_bottom", label:"Recadrage du bas (Y)", min:0, max:0.2, step:0.005, fmt:v=>(v*100).toFixed(1)+" %"},
+  {host:"formatsControls", path:"formats.zoom", label:"Zoom", min:1, max:2.5, step:0.01, fmt:v=>v.toFixed(2)+"×"},
+  {host:"formatsControls", path:"formats.eye_line", label:"Hauteur des yeux dans le cadre", min:0.2, max:0.6, step:0.005, fmt:v=>Math.round(v*100)+" %"},
+  {host:"formatsControls", path:"formats.x_shift", label:"Décalage horizontal", min:-0.3, max:0.3, step:0.005, fmt:v=>(v>0?"+":"")+(v*100).toFixed(1)+" %"},
+  {sec:"Fond", path:"bg.mode", type:"select", label:"Fond", options:[["red","Rouge (debug)"],["gray","Gris"]]},
+  {sec:"Fond", path:"bg.red_hue_shift_deg", label:"Teinte du rouge", min:-180, max:180, step:1, fmt:v=>v+"°", when:"red"},
+  {sec:"Fond", path:"bg.red_saturation", label:"Saturation du rouge", min:0, max:2, step:0.01, fmt:v=>v.toFixed(2), when:"red"},
+  {sec:"Fond", path:"bg.gray_tone", type:"select", label:"Nuance de gris", options:Object.keys(GRAYS).map(k=>[k,k]), when:"gray"},
+  {sec:"Fond", path:"bg.level", label:"Noir ↔ blanc", min:0, max:1, step:0.005, fmt:v=>Math.round(v*100)+" %", when:"gray"},
+  {sec:"Fond", path:"bg.gradient", label:"Dégradé de l'original", min:0, max:1, step:0.01, fmt:v=>Math.round(v*100)+" %", when:"gray"},
+  {sec:"Fond", path:"bg.tint", label:"Intensité de la nuance", min:0, max:2, step:0.01, fmt:v=>v.toFixed(2), when:"gray"},
+];
+// ---- state ----
+const PRESETS = __PRESETS__;
+const clone = o => JSON.parse(JSON.stringify(o));
+const startState = () => { const s = clone(DEFAULTS); for (const k of ["skin","shirt","bg","frame","formats"]) Object.assign(s[k], PRESETS.start[k]||{}); return s; };
+let P = startState();
+const get = (o,p)=>p.split(".").reduce((a,k)=>a[k],o);
+const set = (o,p,v)=>{const ks=p.split("."); const last=ks.pop(); ks.reduce((a,k)=>a[k],o)[last]=v;};
+// ---- colour maths (same as Compose.py) ----
+const DEC = new Float32Array(256); for(let i=0;i<256;i++){const v=i/255; DEC[i]= v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4);}
+function lab(r,g,b){ // r,g,b sRGB 0..255 (may be fractional) -> [L,a,b]
+  const f=v=>{v/=255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4);};
+  const R=f(r),G=f(g),B=f(b);
+  const l=Math.cbrt(Math.max(0.4122214708*R+0.5363325363*G+0.0514459929*B,0));
+  const m=Math.cbrt(Math.max(0.2119034982*R+0.6806995451*G+0.1073969566*B,0));
+  const s=Math.cbrt(Math.max(0.0883024619*R+0.2817188376*G+0.6299787005*B,0));
+  return [0.2104542553*l+0.7936177850*m-0.0040720468*s, 1.9779984951*l-2.4285922050*m+0.4505937099*s, 0.0259040371*l+0.7827717662*m-0.8086757660*s];
+}
+const encg = x => x<=0 ? 0 : (x<=0.0031308 ? 12.92*x : 1.055*Math.pow(x,1/2.4)-0.055);
+function toSrgb(L,a,b,out,o){
+  const l_=L+0.3963377774*a+0.2158037573*b, m_=L-0.1055613458*a-0.0638541728*b, s_=L-0.0894841775*a-1.2914855480*b;
+  const l=l_*l_*l_, m=m_*m_*m_, s=s_*s_*s_;
+  const r=4.0767416621*l-3.3077115913*m+0.2309699292*s, g=-1.2684380046*l+2.6097574011*m-0.3413193965*s, bb=-0.0041960863*l-0.7034186147*m+1.7076147010*s;
+  out[o]=Math.min(255,Math.max(0,encg(r)*255)); out[o+1]=Math.min(255,Math.max(0,encg(g)*255)); out[o+2]=Math.min(255,Math.max(0,encg(bb)*255));
+}
+const smooth=(x,a,b)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a))); return t*t*(3-2*t);};
+const wrap=d=>{d=(d+Math.PI)%(2*Math.PI); if(d<0)d+=2*Math.PI; return d-Math.PI;};
+// ---- per-image precompute ----
+let dL=0,ratio=1,W=0,H=0,N=0,orig=null,M,SK,Co,Lo,Ao,Bo,Ho,Ls,As,Bs,Cs,Hs,Lb,Cb,Hb,Lbar,cacheS=null,cacheB=null,keyS="",keyB="";
+function loadSource(id){
+  const A=ASSETS[id]; const im=new Image(), mk=new Image(); let n=0;
+  const done=()=>{ if(++n<2) return; W=A.w;H=A.h;N=W*H;
+    const c=document.createElement("canvas"); c.width=W;c.height=H; const x=c.getContext("2d",{willReadFrequently:true});
+    x.drawImage(im,0,0); orig=x.getImageData(0,0,W,H); const px=orig.data;
+    x.clearRect(0,0,W,H); x.drawImage(mk,0,0); const mp=x.getImageData(0,0,W,H).data;
+    const F=()=>new Float32Array(N); M=F();SK=F();Co=F();Lo=F();Ao=F();Bo=F();Ho=F();Ls=F();As=F();Bs=F();Cs=F();Hs=F();Lb=F();Cb=F();Hb=F();
+    let sum=0,cnt=0; const dLs=[],rts=[];
+    for(let i=0;i<N;i++){
+      const r=px[i*4],g=px[i*4+1],b=px[i*4+2]; const m=mp[i*4]/255; M[i]=m;
+      const o=lab(r,g,b); Lo[i]=o[0];Ao[i]=o[1];Bo[i]=o[2]; const co=Math.hypot(o[1],o[2]); Co[i]=co; Ho[i]=Math.atan2(o[2],o[1]);
+      const s=lab(r*0.5,g,b); Ls[i]=s[0];As[i]=s[1];Bs[i]=s[2];Cs[i]=Math.hypot(s[1],s[2]);Hs[i]=Math.atan2(s[2],s[1]);
+      const d=lab(r*0.5+127.5,g*0.35,b*0.35); Lb[i]=d[0];Cb[i]=Math.hypot(d[1],d[2]);Hb[i]=Math.atan2(d[2],d[1]);
+      const hd=((Ho[i]*180/Math.PI)%360+360)%360;
+      let sk=smooth(hd,8,25)*(1-smooth(hd,72,92))*smooth(co,0.02,0.045)*smooth(o[0],0.33,0.55)*(1-smooth(o[0],0.92,0.98))*m;
+      const sk0=sk; { const [fx,fy,fw,fh]=A.face; const d=Math.hypot(((i%W)/W-(fx+fw/2))/(0.52*fw),(Math.floor(i/W)/H-(fy+0.55*fh))/(0.55*fh));   // face ellipse: lips and stubble are low chroma
+        sk=Math.max(sk,(1-smooth(d,0.85,1.1))*m*smooth(o[0],0.28,0.45)); }
+      SK[i]=sk; if(sk0>0.9 && co>0.04){dLs.push(o[0]-Ls[i]); rts.push(Cs[i]/Math.max(co,1e-6));}
+      if(m<0.02){sum+=o[0];cnt++;}
+    }
+    const med=a=>{a.sort((x,y)=>x-y); const n=a.length; return n%2? a[(n-1)/2] : (a[n/2-1]+a[n/2])/2;}; dL=med(dLs); ratio=med(rts);
+    Lbar=sum/cnt; cacheS=new Float32Array(N*3); cacheB=new Float32Array(N*3); keyS=keyB="";
+    const cv=document.getElementById("cv"); cv.width=W; cv.height=H; render();
+  };
+  im.onload=done; mk.onload=done; im.src=A.photo; mk.src=A.mask;
+}
+function computeSubject(){
+  const t=P.skin.blue_to_natural, fine=P.skin.hue_fine_deg*Math.PI/180, sat=P.skin.saturation, lt=P.skin.light, n=P.shirt.cast_to_neutral;
+  for(let i=0;i<N;i++){
+    const s=SK[i]; let L=Ls[i]*(1-n)+Lo[i]*n, a=As[i]*(1-n)+Ao[i]*n, b=Bs[i]*(1-n)+Bo[i]*n;
+    if(s>0){ const h=Hs[i]+t*wrap(Ho[i]-Hs[i])+fine, C=((1-t)*Cs[i]+t*Co[i]*ratio)*sat, Lk=(1-t)*Ls[i]+t*(Lo[i]-dL)+lt;
+      L=Lk*s+L*(1-s); a=C*Math.cos(h)*s+a*(1-s); b=C*Math.sin(h)*s+b*(1-s); }
+    toSrgb(L,a,b,cacheS,i*3);
+  }
+}
+function computeBg(){ computeBgInto(cacheB,P.bg); }
+function computeBgInto(buf,B){
+  if(B.mode==="red"){ const sh=B.red_hue_shift_deg*Math.PI/180;
+    for(let i=0;i<N;i++){ const C=Cb[i]*B.red_saturation, h=Hb[i]+sh; toSrgb(Lb[i],C*Math.cos(h),C*Math.sin(h),buf,i*3); }
+  } else { const g=GRAYS[B.gray_tone], h=g[0]*Math.PI/180, C=g[1]*B.tint, ca=C*Math.cos(h), cb=C*Math.sin(h);
+    for(let i=0;i<N;i++){ const L=Math.min(1,Math.max(0,B.level+(Lo[i]-Lbar)*B.gradient)); toSrgb(L,ca,cb,buf,i*3); }
+  }
+}
+let raf=0,showOrig=false;
+function schedule(){ if(!raf) raf=requestAnimationFrame(()=>{raf=0;render();}); }
+function render(){
+  if(!orig) return; const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  if(showOrig){ cv.height=H; ctx.putImageData(orig,0,0); return; }
+  const kS=JSON.stringify([P.skin,P.shirt]), kB=JSON.stringify(P.bg);
+  if(kS!==keyS){computeSubject();keyS=kS;} if(kB!==keyB){computeBg();keyB=kB;}
+  composite(ctx,cacheB); showValues(); renderSheet(); renderFormats();
+}
+function composite(ctx,bg){
+  const Hc=Math.round(H*(1-P.frame.crop_bottom)); if(ctx.canvas.height!==Hc) ctx.canvas.height=Hc;   // crop_bottom removes rows at the bottom
+  const out=ctx.createImageData(W,H), d=out.data;
+  for(let i=0;i<N;i++){ const m=M[i], j=i*3, k=i*4;
+    d[k]=cacheS[j]*m+bg[j]*(1-m); d[k+1]=cacheS[j+1]*m+bg[j+1]*(1-m); d[k+2]=cacheS[j+2]*m+bg[j+2]*(1-m); d[k+3]=255; }
+  ctx.putImageData(out,0,0,0,0,W,Hc);
+}
+// ---- third visual: aspect-ratio views of the current composition ----
+const FORMATS=PRESETS.formats, fCv={}; let lastBoxes={};
+function buildFormats(){ const g=document.getElementById("fgrid"); g.innerHTML="";
+  for(const [name] of FORMATS){ const f=document.createElement("figure"), c=document.createElement("canvas"), cap=document.createElement("figcaption"); cap.innerHTML="<span>"+name+"</span><span class='hint' id='fdim-"+name.replace(":","x")+"'></span>"; f.append(c,cap); g.appendChild(f); fCv[name]=c; } }
+function renderFormats(){ if(!orig||showOrig) return; const src=document.getElementById("cv"), Wc=src.width, Hc=src.height, F=P.formats, A=ASSETS[document.getElementById("src").value];
+  for(const [name,r] of FORMATS){ let fw,fh; if(Wc/Hc>=r){fh=Hc;fw=fh*r;}else{fw=Wc;fh=fw/r;} fw/=F.zoom; fh/=F.zoom;
+    let x0=Math.min(Math.max(A.eyes[0]*Wc+F.x_shift*Wc-fw/2,0),Wc-fw), y0=Math.min(Math.max(A.eyes[1]*H-F.eye_line*fh,0),Hc-fh);
+    x0=Math.round(x0);y0=Math.round(y0);const w=Math.round(fw),h=Math.round(fh); lastBoxes[name]=[x0,y0,w,h];
+    const c=fCv[name]; c.width=w; c.height=h; c.getContext("2d").drawImage(src,x0,y0,w,h,0,0,w,h);
+    document.getElementById("fdim-"+name.replace(":","x")).textContent=w+"×"+h; } }
+// ---- second visual: 4 grey backgrounds, one shared black-white level ----
+const SHEET_TONES=PRESETS.sheet_tones, sheetBuf={}, sheetKey={}, sheetCv={}, sheetFig={};
+function buildSheet(){ const g=document.getElementById("sheetGrid"); g.innerHTML="";
+  for(const t of SHEET_TONES){ const f=document.createElement("figure"), c=document.createElement("canvas"), cap=document.createElement("figcaption");
+    cap.innerHTML="<span>"+t+"</span><span class='hint'>"+GRAYS[t][0]+"° · "+GRAYS[t][1]+"</span>"; f.append(c,cap); g.appendChild(f);
+    f.onclick=()=>{P.bg.mode="gray"; P.bg.gray_tone=t; sync(); schedule();}; sheetCv[t]=c; sheetFig[t]=f; }
+}
+function renderSheet(){ if(!orig) return;
+  for(const t of SHEET_TONES){ const c=sheetCv[t]; if(c.width!==W){c.width=W;}
+    if(!sheetBuf[t]||sheetBuf[t].length!==N*3){sheetBuf[t]=new Float32Array(N*3); sheetKey[t]="";}
+    const key=JSON.stringify([P.bg.level,P.bg.gradient,P.bg.tint,t,keyS,N]);   // crop does not need a recompute, composite() handles it
+    if(key!==sheetKey[t]){ computeBgInto(sheetBuf[t],{mode:"gray",gray_tone:t,level:P.bg.level,gradient:P.bg.gradient,tint:P.bg.tint}); sheetKey[t]=key; }
+    composite(c.getContext("2d"),sheetBuf[t]); }
+}
+// ---- UI generated from SPEC ----
+const ctl=document.getElementById("controls"), rows={};
+function buildUI(){
+  ctl.innerHTML=""; let sec=""; 
+  for(const s of SPEC){
+    const host=s.host?document.getElementById(s.host):ctl; if(s.host) host.innerHTML=host.dataset.built?host.innerHTML:"";
+    if(!s.host && s.sec!==sec){ sec=s.sec; const h=document.createElement("h2"); h.textContent=sec; h.style.marginTop="6px"; ctl.appendChild(h); }
+    const row=document.createElement("div"); row.className="row"; row.style.marginBottom="8px"; rows[s.path]=row;
+    const lab=document.createElement("label"); lab.textContent=s.label; row.appendChild(lab);
+    if(s.type==="select"){ const sel=document.createElement("select"); sel.style.gridColumn="1/3";
+      for(const [v,t] of s.options){const o=document.createElement("option"); o.value=v;o.textContent=t;sel.appendChild(o);}
+      sel.value=get(P,s.path); sel.oninput=()=>{set(P,s.path,sel.value); sync(); schedule();}; row.appendChild(sel); s.el=sel;
+    } else { const out=document.createElement("output"); row.appendChild(out); const r=document.createElement("input"); r.type="range";
+      r.min=s.min;r.max=s.max;r.step=s.step; r.value=get(P,s.path); out.textContent=s.fmt(+r.value);
+      r.oninput=()=>{set(P,s.path,+r.value); out.textContent=s.fmt(+r.value); schedule();}; r.title="Double-clic : valeur debug"; r.ondblclick=()=>{r.value=get(DEFAULTS,s.path); r.oninput();};
+      row.appendChild(r); s.el=r; s.out=out; }
+    host.appendChild(row); if(s.host) host.dataset.built="1";
+  }
+  sync();
+}
+function sync(){ const L=document.getElementById("lvl"); L.value=P.bg.level; document.getElementById("lvlOut").textContent=Math.round(P.bg.level*100)+" %";
+  for(const t of SHEET_TONES) sheetFig[t].classList.toggle("sel", P.bg.mode==="gray" && P.bg.gray_tone===t);
+  for(const s of SPEC){ rows[s.path].classList.toggle("hidden", !!s.when && s.when!==P.bg.mode);
+    if(s.type==="select") s.el.value=get(P,s.path); else {s.el.value=get(P,s.path); s.out.textContent=s.fmt(+s.el.value);} } }
+function values(){ return JSON.stringify(Object.assign({tool:"skin-bg-picker/1", source:document.getElementById("src").value}, P)); }
+function showValues(){ document.getElementById("out").textContent=values(); }
+const status=t=>{const e=document.getElementById("status"); e.textContent=t; setTimeout(()=>e.textContent="",2200);};
+document.getElementById("copy").onclick=async()=>{ const v=values(); try{await navigator.clipboard.writeText(v);}catch(e){const ta=document.createElement("textarea");ta.value=v;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();} status("Copié"); };
+document.getElementById("paste").onclick=()=>{ const t=prompt("Colle ici les valeurs (JSON) :"); if(!t) return; try{ const j=JSON.parse(t); for(const k of ["skin","shirt","bg","frame","formats"]) Object.assign(P[k],j[k]||{}); if(j.source&&ASSETS[j.source]){document.getElementById("src").value=j.source; loadSource(j.source);} sync(); schedule(); status("Appliqué"); }catch(e){status("JSON invalide");} };
+document.getElementById("reset").onclick=()=>{ P=startState(); sync(); schedule(); };
+document.getElementById("debug").onclick=()=>{ P=clone(DEFAULTS); sync(); schedule(); };
+document.getElementById("lvl").oninput=e=>{ P.bg.level=+e.target.value; sync(); schedule(); };
+const hold=document.getElementById("hold"); hold.onpointerdown=()=>{showOrig=true;render();}; for(const ev of ["pointerup","pointerleave","pointercancel"]) hold.addEventListener(ev,()=>{ if(showOrig){showOrig=false;render();} });
+const srcSel=document.getElementById("src"); for(const k of Object.keys(ASSETS)){const o=document.createElement("option");o.value=k;o.textContent="Image "+k+" : "+ASSETS[k].label;srcSel.appendChild(o);} srcSel.oninput=()=>loadSource(srcSel.value);
+window.__picker={get boxes(){return lastBoxes;}, get P(){return P;}, setP(p){for(const k of ["skin","shirt","bg","frame","formats"]) Object.assign(P[k],p[k]||{}); sync(); render();}, canvas:()=>document.getElementById("cv")};
+buildSheet(); buildFormats(); buildUI(); srcSel.value=PRESETS.start.source; loadSource(PRESETS.start.source);
+</script>
+</body>
+</html>

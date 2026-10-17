@@ -1,0 +1,12 @@
+{
+  "_doc": "17 October 2026. exposure in stops, contrast/saturation are multipliers (1 = unchanged), temperature/tint in -1..1 (warm/magenta positive), lift raises blacks, shadow_tint/highlight_tint are RGB offsets weighted by luminance.",
+  "sources": {
+    "3": "Sources/image pro matthieu 3.png",
+    "5": "Sources/matthieu pro 4.png"
+  },
+  "grades": {
+    "A-Naturel": {"exposure": 0.10, "contrast": 1.06, "saturation": 1.03, "temperature": 0.02, "tint": 0.0,  "lift": 0.0,  "shadow_tint": [0, 0, 0],          "highlight_tint": [0, 0, 0]},
+    "B-Chaud":   {"exposure": 0.10, "contrast": 1.08, "saturation": 1.08, "temperature": 0.10, "tint": 0.01, "lift": 0.02, "shadow_tint": [0.01, 0, -0.01],  "highlight_tint": [0.03, 0.01, -0.03]},
+    "C-Froid":   {"exposure": 0.00, "contrast": 1.12, "saturation": 0.90, "temperature": -0.08, "tint": 0.0, "lift": 0.01, "shadow_tint": [-0.01, 0, 0.03], "highlight_tint": [0, 0, 0.01]}
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "_doc": "17 October 2026. Photographer-style grade. 3 categories, 8 parameters max each. Stops = exposure steps. Hues in degrees (OKLCH: skin 40-60, yellow 100, blue 250-270). Chroma in OKLab units (0.01 = barely, 0.04 = clear).",
+  "sources": {
+    "3": "Sources/image pro matthieu 3.png",
+    "5": "Sources/matthieu pro 4.png"
+  },
+  "looks": {
+    "A-StudioClean": {
+      "light": {
+        "exposure": 0.1,
+        "contrast": 0.22,
+        "highlight_rolloff": 0.35,
+        "black_lift": 0.008,
+        "bg_exposure": 0.1,
+        "bg_glow": 0.3,
+        "face_light": 0.1,
+        "vignette": 0.12
+      },
+      "colour": {
+        "wb_strength": 1.0,
+        "temperature": 0.0,
+        "tint": 0.0,
+        "saturation": 1.0,
+        "skin_hue_shift": 0.0,
+        "skin_redness": 0.35,
+        "bg_hue": 250,
+        "bg_chroma": 0.006
+      },
+      "finish": {
+        "shadow_hue": 250,
+        "shadow_chroma": 0.0,
+        "highlight_hue": 90,
+        "highlight_chroma": 0.0,
+        "clarity": 0.15,
+        "grain": 0.01,
+        "eye_dodge": 0.15
+      }
+    },
+    "B-WarmEditorial": {
+      "light": {
+        "exposure": 0.08,
+        "contrast": 0.36,
+        "highlight_rolloff": 0.4,
+        "black_lift": 0.022,
+        "bg_exposure": -0.25,
+        "bg_glow": 0.4,
+        "face_light": 0.1,
+        "vignette": 0.3
+      },
+      "colour": {
+        "wb_strength": 1.0,
+        "temperature": 0.04,
+        "tint": 0.0,
+        "saturation": 1.0,
+        "skin_hue_shift": 1.0,
+        "skin_redness": 0.3,
+        "bg_hue": 62,
+        "bg_chroma": 0.02
+      },
+      "finish": {
+        "shadow_hue": 55,
+        "shadow_chroma": 0.008,
+        "highlight_hue": 85,
+        "highlight_chroma": 0.01,
+        "clarity": 0.2,
+        "grain": 0.014,
+        "eye_dodge": 0.2
+      }
+    },
+    "C-CoolCinema": {
+      "light": {
+        "exposure": 0.06,
+        "contrast": 0.5,
+        "highlight_rolloff": 0.45,
+        "black_lift": 0.014,
+        "bg_exposure": -0.35,
+        "bg_glow": 0.45,
+        "face_light": 0.15,
+        "vignette": 0.4
+      },
+      "colour": {
+        "wb_strength": 1.0,
+        "temperature": -0.03,
+        "tint": 0.0,
+        "saturation": 0.96,
+        "skin_hue_shift": 1.0,
+        "skin_redness": 0.4,
+        "bg_hue": 255,
+        "bg_chroma": 0.028
+      },
+      "finish": {
+        "shadow_hue": 250,
+        "shadow_chroma": 0.012,
+        "highlight_hue": 90,
+        "highlight_chroma": 0.006,
+        "clarity": 0.3,
+        "grain": 0.012,
+        "eye_dodge": 0.2
+      }
+    }
+  }
+}

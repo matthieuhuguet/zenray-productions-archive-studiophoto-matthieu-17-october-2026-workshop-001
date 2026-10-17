@@ -1,0 +1,97 @@
+# Skin / background composer: same maths as SkinBgPicker.html, at full resolution. 17 October 2026
+# FR : mêmes formules que l'outil à curseurs, appliquées à la pleine résolution à partir des valeurs copiées.
+# Usage: python3 Compose.py '<json copied from the tool>' [out.png]    or    python3 Compose.py values.json [out.png]
+import json, os, sys
+import numpy as np
+from PIL import Image
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project folder = parent of Scripts/, survives any rename (17 October 2026)
+SOURCES = {"5": f"{ROOT}/Sources/matthieu pro 4.png", "3": f"{ROOT}/Sources/image pro matthieu 3.png"}   # originals moved from Downloads, 17 October 2026
+GRAYS = {"Neutre": (0, 0.0), "Chaud": (55, 0.011), "Froid": (250, 0.007), "Ardoise": (255, 0.028), "Taupe": (70, 0.018)}  # (hue deg, chroma)
+DEFAULTS = {"source": "5",
+  "skin":  {"blue_to_natural": 0.0, "hue_fine_deg": 0.0, "saturation": 1.0, "light": 0.0},
+  "shirt": {"cast_to_neutral": 0.0},
+  "frame": {"crop_bottom": 0.0},
+  "formats": {"zoom": 1.0, "eye_line": 0.38, "x_shift": 0.0},
+  "bg":    {"mode": "red", "red_hue_shift_deg": 0.0, "red_saturation": 1.0, "gray_tone": "Neutre", "level": 0.35, "gradient": 1.0, "tint": 1.0}}
+
+def merged(p):
+    out = json.loads(json.dumps(DEFAULTS))
+    for k, v in p.items():
+        if isinstance(v, dict) and k in out: out[k].update(v)
+        elif k in out: out[k] = v
+    return out
+
+def dec(v): return np.where(v <= 0.04045, v / 12.92, ((v + 0.055) / 1.055) ** 2.4)
+def enc(l): l = np.clip(l, 0, None); return np.where(l <= 0.0031308, l * 12.92, 1.055 * np.power(l, 1 / 2.4) - 0.055)
+M1 = np.array([[0.4122214708,0.5363325363,0.0514459929],[0.2119034982,0.6806995451,0.1073969566],[0.0883024619,0.2817188376,0.6299787005]])
+M2 = np.array([[0.2104542553,0.7936177850,-0.0040720468],[1.9779984951,-2.4285922050,0.4505937099],[0.0259040371,0.7827717662,-0.8086757660]])
+M2i = np.array([[1,0.3963377774,0.2158037573],[1,-0.1055613458,-0.0638541728],[1,-0.0894841775,-1.2914855480]])
+M1i = np.array([[4.0767416621,-3.3077115913,0.2309699292],[-1.2684380046,2.6097574011,-0.3413193965],[-0.0041960863,-0.7034186147,1.7076147010]])
+def srgb_to_lab(s255): return np.cbrt(np.clip(dec(s255 / 255.0) @ M1.T, 0, None)) @ M2.T
+def lab_to_srgb(lab): return np.clip(enc(((lab @ M2i.T) ** 3) @ M1i.T) * 255.0, 0, 255)
+def smooth(x, a, b): t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+def lch(lab): return lab[..., 0], np.hypot(lab[..., 1], lab[..., 2]), np.arctan2(lab[..., 2], lab[..., 1])
+def mk(L, C, h): return np.stack([L, C * np.cos(h), C * np.sin(h)], -1)
+def wrap(d): return (d + np.pi) % (2 * np.pi) - np.pi
+
+def compose(a255, m, P, face=None):
+    """a255: HxWx3 float sRGB 0..255 original; m: HxW float 0..1 person mask; face: normalised (x, y, w, h) of the face box; returns HxWx3 float sRGB."""
+    P = merged(P); S, SH, BG = P, P["skin"], P["bg"]
+    Sd = a255.copy(); Sd[..., 0] *= 0.5                               # debug subject: red halved
+    Bd = a255 * 0.35; Bd[..., 0] = a255[..., 0] * 0.5 + 127.5        # debug background: dark red
+    lo, ls, lb = srgb_to_lab(a255), srgb_to_lab(Sd), srgb_to_lab(Bd)
+    Lo, Co, ho = lch(lo); Ls, Cs, hs = lch(ls)
+    hdeg = np.degrees(ho) % 360
+    sk = smooth(hdeg, 8, 25) * (1 - smooth(hdeg, 72, 92)) * smooth(Co, 0.02, 0.045) * smooth(Lo, 0.33, 0.55) * (1 - smooth(Lo, 0.92, 0.98)) * m
+    core = (sk > 0.9) & (Co > 0.04)                    # clear skin pixels: measure the debug tint's global lightness / chroma offsets
+    dL, ratio = np.median((Lo - Ls)[core]), np.median((Cs / np.maximum(Co, 1e-6))[core])
+    if face is not None:   # lips and stubble are low-chroma: add a soft face ellipse so they travel with the skin
+        H_, W_ = m.shape; yy, xx = np.mgrid[0:H_, 0:W_]
+        fx, fy, fw, fh = face
+        d = np.hypot((xx / W_ - (fx + fw / 2)) / (0.52 * fw), (yy / H_ - (fy + 0.55 * fh)) / (0.55 * fh))
+        sk = np.maximum(sk, (1 - smooth(d, 0.85, 1.1)) * m * smooth(Lo, 0.28, 0.45))
+    # subject: skin hue travels from the cyan debug tint to the natural hue, lightness and chroma kept (sliders on top)
+    hnew = hs + SH["blue_to_natural"] * wrap(ho - hs) + np.radians(SH["hue_fine_deg"])
+    t = SH["blue_to_natural"]   # t=0 keeps the debug tint, t=1 = original hue/chroma structure at the debug tint's overall lightness and saturation
+    skin_lab = mk((1 - t) * Ls + t * (Lo - dL) + SH["light"], ((1 - t) * Cs + t * Co * ratio) * SH["saturation"], hnew)
+    n = P["shirt"]["cast_to_neutral"]
+    other_lab = ls * (1 - n) + lo * n
+    S_ = lab_to_srgb(skin_lab * sk[..., None] + other_lab * (1 - sk[..., None]))
+    # background
+    if BG["mode"] == "red":
+        Lb, Cb, hb = lch(lb)
+        B_ = lab_to_srgb(mk(Lb, Cb * BG["red_saturation"], hb + np.radians(BG["red_hue_shift_deg"])))
+    else:
+        hue, c0 = GRAYS[BG["gray_tone"]]
+        Lbar = Lo[m < 0.02].mean()
+        Lg = np.clip(BG["level"] + (Lo - Lbar) * BG["gradient"], 0, 1)
+        B_ = lab_to_srgb(mk(Lg, np.full_like(Lg, c0 * BG["tint"]), np.full_like(Lg, np.radians(hue))))
+    out = m[..., None] * S_ + (1 - m[..., None]) * B_
+    return out[: int(round(out.shape[0] * (1 - P["frame"]["crop_bottom"])))]   # crop_bottom: fraction of the height removed at the bottom (arm)
+
+def reframe(img, eyes, ratio, F, H0):
+    """Crop box of aspect `ratio` (w/h) inside the (bottom-cropped) image: as large as fits, divided by zoom, eyes on the eye_line, x centred on the eyes + x_shift."""
+    Hc, W = img.shape[:2]
+    if W / Hc >= ratio: fh = Hc; fw = fh * ratio
+    else: fw = W; fh = fw / ratio
+    fw, fh = fw / F["zoom"], fh / F["zoom"]
+    x0 = min(max(eyes[0] * W + F["x_shift"] * W - fw / 2, 0), W - fw); y0 = min(max(eyes[1] * H0 - F["eye_line"] * fh, 0), Hc - fh)
+    x0, y0, w, h = [int(np.floor(v + 0.5)) for v in (x0, y0, fw, fh)]   # half-up, same as JS Math.round
+    return img[y0:y0 + h, x0:x0 + w], (x0, y0, w, h)
+
+if __name__ == "__main__":
+    arg = sys.argv[1]; P = json.load(open(arg)) if os.path.exists(arg) else json.loads(arg)
+    want_formats = "formats" in P   # values copied from the tool carry "formats": every ratio is exported next to the main file
+    P = merged(P); src = SOURCES[str(P["source"])]
+    a = np.asarray(Image.open(src).convert("RGB"), dtype=np.float64)
+    m = np.asarray(Image.open(f"{ROOT}/Masks/Src{P['source']}_person.png").convert("L"), dtype=np.float64) / 255
+    fj = json.load(open(f"{ROOT}/Masks/Src{P['source']}_face.json")); fx, fy, fw, fh = fj["face"]; face = (fx / fj["width"], fy / fj["height"], fw / fj["width"], fh / fj["height"])
+    out = sys.argv[2] if len(sys.argv) > 2 else f"{ROOT}/Composed/Src{P['source']}_{'red' if P['bg']['mode']=='red' else P['bg']['gray_tone']}.png"
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    img = np.clip(compose(a, m, P, face), 0, 255); Image.fromarray((img + 0.5).astype(np.uint8)).save(out); print(out)
+    if want_formats:
+        eyes = ((fj["left_eye"][0] + fj["right_eye"][0]) / 2 / fj["width"], (fj["left_eye"][1] + fj["right_eye"][1]) / 2 / fj["height"])
+        for name, ratio in json.load(open(f"{ROOT}/Presets.json"))["formats"]:
+            crop, box = reframe(img, eyes, ratio, P["formats"], a.shape[0]); p2 = out.replace(".png", "_" + name.replace(":", "x") + ".png")
+            Image.fromarray((crop + 0.5).astype(np.uint8)).save(p2); print(p2, box)

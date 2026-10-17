@@ -1,0 +1,32 @@
+# Contact sheet grid, native resolution. 17 October 2026
+# FR : planche de comparaison à résolution native, tout est paramétrable en tête de fichier ou en ligne de commande.
+import argparse, os
+from PIL import Image, ImageDraw, ImageFont
+
+p = argparse.ArgumentParser()
+p.add_argument("images", nargs="+")
+p.add_argument("--out", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Sheet.png"))
+p.add_argument("--cols", type=int, default=3)
+p.add_argument("--cell-w", type=int, default=1448)   # cell width in px
+p.add_argument("--cell-h", type=int, default=1402)   # cell height in px
+p.add_argument("--gap", type=int, default=40)
+p.add_argument("--label-h", type=int, default=110)
+p.add_argument("--bg", default="#161616")
+p.add_argument("--fg", default="#f2f2f2")
+a = p.parse_args()
+
+font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 64)
+n = len(a.images); rows = -(-n // a.cols)
+W = a.cols * a.cell_w + (a.cols + 1) * a.gap
+H = rows * (a.cell_h + a.label_h) + (rows + 1) * a.gap
+sheet = Image.new("RGB", (W, H), a.bg); d = ImageDraw.Draw(sheet)
+for i, path in enumerate(a.images):
+    im = Image.open(path).convert("RGB")
+    s = min(a.cell_w / im.width, a.cell_h / im.height, 1.0)
+    if s < 1: im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
+    c, r = i % a.cols, i // a.cols
+    x0 = a.gap + c * (a.cell_w + a.gap); y0 = a.gap + r * (a.cell_h + a.label_h + a.gap)
+    d.text((x0, y0 + 10), f"{i+1}  {os.path.basename(path)}  ({im.width}x{im.height})", fill=a.fg, font=font)
+    sheet.paste(im, (x0 + (a.cell_w - im.width) // 2, y0 + a.label_h + (a.cell_h - im.height) // 2))
+sheet.save(a.out)
+print(a.out, sheet.size)

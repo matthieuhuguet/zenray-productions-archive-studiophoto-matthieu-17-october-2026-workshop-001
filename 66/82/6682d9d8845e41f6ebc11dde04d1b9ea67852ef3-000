@@ -1,0 +1,51 @@
+{
+  "_doc": "17 October 2026. Starting values = Matthieu's picks: Taupe at 35 %, bottom crop 4 % (his arm starts at 3.3 % from the bottom). 'debug' = DEFAULTS of Compose.py.",
+  "start": {
+    "source": "5",
+    "skin": {
+      "blue_to_natural": 1,
+      "hue_fine_deg": 0,
+      "saturation": 1.28,
+      "light": -0.005
+    },
+    "shirt": {
+      "cast_to_neutral": 1
+    },
+    "bg": {
+      "mode": "gray",
+      "red_hue_shift_deg": -158,
+      "red_saturation": 1,
+      "gray_tone": "Taupe",
+      "level": 0.35,
+      "gradient": 1,
+      "tint": 1
+    },
+    "frame": {
+      "crop_bottom": 0.04
+    }
+  },
+  "sheet_tones": [
+    "Chaud",
+    "Froid",
+    "Ardoise",
+    "Taupe"
+  ],
+  "formats": [
+    [
+      "1:1",
+      1.0
+    ],
+    [
+      "4:5",
+      0.8
+    ],
+    [
+      "16:9",
+      1.7777777777777777
+    ],
+    [
+      "9:16",
+      0.5625
+    ]
+  ]
+}

@@ -1,0 +1,113 @@
+# Photographer-style colour grade (WB from shirt, filmic luma curve, OKLab skin/background control, split tone, clarity, grain).
+# 17 October 2026. Looks and parameters live in Grades-v2.json, nothing is hard-coded here except the maths.
+# FR : étalonnage façon photographe. Tous les réglages sont dans Grades-v2.json ; ce script n'en contient que les formules.
+import json, os, sys
+import numpy as np
+from PIL import Image
+from scipy.ndimage import gaussian_filter
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project folder = parent of Scripts/, survives any rename (17 October 2026)
+CATS = {
+ "light":  ["exposure","contrast","highlight_rolloff","black_lift","bg_exposure","bg_glow","face_light","vignette"],
+ "colour": ["wb_strength","temperature","tint","saturation","skin_hue_shift","skin_redness","bg_hue","bg_chroma"],
+ "finish": ["shadow_hue","shadow_chroma","highlight_hue","highlight_chroma","clarity","grain","eye_dodge"],
+}
+
+def check(look, p):
+    for c, keys in CATS.items():
+        assert len(keys) <= 8, f"category {c} has more than 8 parameters"
+        for k in keys:
+            if k not in p[c]: raise SystemExit(f"look {look}: missing parameter {c}.{k}")
+
+def dec(v): return np.where(v <= 0.04045, v / 12.92, ((v + 0.055) / 1.055) ** 2.4)
+def enc(l): l = np.clip(l, 0, None); return np.where(l <= 0.0031308, l * 12.92, 1.055 * np.power(l, 1/2.4) - 0.055)
+LUMA = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+M1 = np.array([[0.4122214708,0.5363325363,0.0514459929],[0.2119034982,0.6806995451,0.1073969566],[0.0883024619,0.2817188376,0.6299787005]], dtype=np.float32)
+M2 = np.array([[0.2104542553,0.7936177850,-0.0040720468],[1.9779984951,-2.4285922050,0.4505937099],[0.0259040371,0.7827717662,-0.8086757660]], dtype=np.float32)
+M2i = np.array([[1,0.3963377774,0.2158037573],[1,-0.1055613458,-0.0638541728],[1,-0.0894841775,-1.2914855480]], dtype=np.float32)
+M1i = np.array([[4.0767416621,-3.3077115913,0.2309699292],[-1.2684380046,2.6097574011,-0.3413193965],[-0.0041960863,-0.7034186147,1.7076147010]], dtype=np.float32)
+def to_lab(rgb): lms = np.cbrt(np.clip(rgb @ M1.T, 0, None)); return lms @ M2.T
+def from_lab(lab): lms = (lab @ M2i.T) ** 3; return lms @ M1i.T
+def smooth(x, a, b): t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
+
+def gauss2d(H, W, cx, cy, sx, sy):
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32)
+    return np.exp(-(((x - cx) / sx) ** 2 + ((y - cy) / sy) ** 2) / 2).astype(np.float32)
+
+def grade(sid, src, p):
+    im = Image.open(src).convert("RGB"); H, W = im.height, im.width
+    rgb = dec(np.asarray(im, dtype=np.float32) / 255.0).astype(np.float32)
+    m = np.asarray(Image.open(f"{ROOT}/Masks/Src{sid}_person.png").convert("L"), dtype=np.float32) / 255.0
+    face = json.load(open(f"{ROOT}/Masks/Src{sid}_face.json"))
+    fx, fy, fw, fh = face["face"]; fcx, fcy = fx + fw / 2, fy + fh / 2
+    subj = np.clip(gaussian_filter(m, 1.5), 0, 1); bgw = 1 - subj
+    L, C, K, F = p["light"], p["colour"], p, p["finish"]
+
+    # 1. White balance from the white shirt (neutral reference), then creative temperature / tint
+    lum0 = enc(rgb @ LUMA)
+    ref = (m > 0.95) & (lum0 > np.percentile(lum0[m > 0.95], 80)) & (np.arange(H)[:, None] > H * 0.6)
+    mean = rgb[ref].mean(0); gains = mean.mean() / mean
+    gains = 1 + (gains - 1) * C["wb_strength"]
+    gains = gains * np.array([1 + 0.30 * C["temperature"], 1 - 0.20 * C["tint"], 1 - 0.30 * C["temperature"]], dtype=np.float32)
+    gains = gains / (gains @ LUMA)
+    rgb = rgb * gains.astype(np.float32)
+
+    # 2. Light in stops: subject exposure + face dodge + eyes; background exposure + glow behind head; vignette
+    G_face = gauss2d(H, W, fcx, fcy - 0.05 * fh, 0.55 * fw, 0.62 * fh)
+    G_head = gauss2d(H, W, fcx, fcy - 0.1 * fh, 1.5 * fw, 1.5 * fh)
+    G_eyes = np.zeros((H, W), np.float32)
+    for k in ("left_eye", "right_eye"): G_eyes = np.maximum(G_eyes, gauss2d(H, W, *face[k], 0.11 * fw, 0.07 * fw))
+    y, x = np.mgrid[0:H, 0:W].astype(np.float32)
+    r2 = ((x - W / 2) / (W / 2)) ** 2 + ((y - H / 2) / (H / 2)) ** 2
+    stops_subj = L["exposure"] + L["face_light"] * G_face + F["eye_dodge"] * G_eyes
+    stops_bg = L["exposure"] + L["bg_exposure"] + L["bg_glow"] * G_head
+    stops = subj * stops_subj + bgw * stops_bg - L["vignette"] * 1.4 * r2 * (0.5 + 0.5 * bgw)
+    rgb = rgb * (2.0 ** stops)[..., None]
+
+    # 3. Filmic curve on luminance only (hue and saturation ratios preserved)
+    Y = np.maximum(rgb @ LUMA, 1e-5); v = enc(Y)
+    v = v + L["contrast"] * (v * v * (3 - 2 * np.clip(v, 0, 1)) - v)
+    s0 = 0.92 - 0.30 * L["highlight_rolloff"]
+    v = np.where(v > s0, s0 + (1 - s0) * np.tanh((v - s0) / (1 - s0)), v)
+    v = L["black_lift"] + v * (1 - L["black_lift"])
+    rgb = rgb * (dec(v) / Y)[..., None]
+    rgb = np.clip(rgb, 0, None)
+
+    # 4. Colour in OKLab: saturation, skin, background colourise, split tone
+    lab = to_lab(rgb); Lk, a, b = lab[..., 0], lab[..., 1], lab[..., 2]
+    ch = np.hypot(a, b); hue = np.degrees(np.arctan2(b, a)) % 360
+    skin = smooth(hue, 8, 25) * (1 - smooth(hue, 72, 92)) * smooth(ch, 0.02, 0.045) * smooth(Lk, 0.33, 0.55) * (1 - smooth(Lk, 0.92, 0.98)) * subj
+    ch = ch * C["saturation"]
+    hue = hue + C["skin_hue_shift"] * skin
+    red = np.clip((50 - hue) / 15, 0, 1)
+    hue = hue + C["skin_redness"] * skin * np.clip(50 - hue, 0, 20) * 0.6
+    ch = ch * (1 - 0.12 * C["skin_redness"] * skin * red)
+    ct = C["bg_chroma"] * np.clip(Lk / 0.43, 0.6, 1.5)
+    ch = ch * (1 - bgw) + ct * bgw
+    hue = np.where(bgw > 0.5, C["bg_hue"], hue) * 1.0  # hard pick, feathered through chroma blend below
+    hue = np.where((bgw > 0.0) & (bgw <= 0.5), hue, hue)
+    a, b = ch * np.cos(np.radians(hue)), ch * np.sin(np.radians(hue))
+    prot = 1 - 0.8 * skin
+    ws = np.clip(1 - Lk / 0.5, 0, 1) ** 1.5 * prot; wh = np.clip((Lk - 0.6) / 0.4, 0, 1) ** 1.5 * prot
+    a = a + F["shadow_chroma"] * np.cos(np.radians(F["shadow_hue"])) * ws + F["highlight_chroma"] * np.cos(np.radians(F["highlight_hue"])) * wh
+    b = b + F["shadow_chroma"] * np.sin(np.radians(F["shadow_hue"])) * ws + F["highlight_chroma"] * np.sin(np.radians(F["highlight_hue"])) * wh
+    rgb = np.clip(from_lab(np.stack([Lk, a, b], -1)), 0, None)
+
+    # 5. Clarity (large-radius local contrast, skin spared), grain (dither the smooth background)
+    Y = np.maximum(rgb @ LUMA, 1e-5); v = enc(Y)
+    detail = v - gaussian_filter(v, 0.018 * W)
+    v2 = np.clip(v + F["clarity"] * 0.6 * detail * (1 - 0.8 * skin) * (0.3 + 0.7 * subj), 0, 1.2)
+    rgb = rgb * (dec(v2) / Y)[..., None]
+    rng = np.random.default_rng(7)
+    out = enc(rgb) + (rng.standard_normal((H, W, 1)).astype(np.float32) * F["grain"]) * (1 - np.abs(2 * v2[..., None] - 1) * 0.6)
+    return Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)), (ref.sum(), gains)
+
+if __name__ == "__main__":
+    cfg = json.load(open(f"{ROOT}/Grades-v2.json")); out = f"{ROOT}/Graded-v2"; os.makedirs(out, exist_ok=True)
+    only = sys.argv[1:]  # optional filter, e.g. "C-CoolCinema"
+    for look, p in cfg["looks"].items():
+        if only and look not in only: continue
+        check(look, p)
+        for sid, src in cfg["sources"].items():
+            img, (n, g) = grade(sid, src if os.path.isabs(src) else f"{ROOT}/{src}", p)
+            path = f"{out}/Src{sid}_{look}.png"; img.save(path); print(path, "wb ref px", n, "gains", np.round(g, 3))

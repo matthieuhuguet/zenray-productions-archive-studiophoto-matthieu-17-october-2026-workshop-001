@@ -1,0 +1,37 @@
+# Studio photo Matthieu, 17 October 2026
+
+Portrait pro de Matthieu : étalonnage, teint de peau, fond gris et formats. Tout est paramétrable (loi HDA). (17 October 2026)
+
+## Où est quoi (17 October 2026)
+
+| Dossier ou fichier | Contenu |
+|---|---|
+| `Sources/` | les 7 photos d'origine (déplacées de Downloads le 17 October 2026), jamais modifiées |
+| `SkinBgPicker.html` | l'outil à curseurs : peau, fond rouge debug ou gris, recadrage du bas, 4 fonds gris, formats 1:1 4:5 16:9 9:16 |
+| `Scripts/Compose.py` | rend en pleine résolution les valeurs copiées de l'outil (mêmes formules que le HTML) |
+| `Scripts/BuildPicker.py` | reconstruit `SkinBgPicker.html` (aperçus et masques intégrés) |
+| `Scripts/Grade2.py`, `Grades-v2.json`, `Grades-v3.json` | moteur d'étalonnage « photographe » et ses looks |
+| `Scripts/Segment`, `Scripts/Face` (Swift, Vision) | masque de la personne et boîte du visage |
+| `Presets.json` | valeurs de départ de l'outil et liste des formats |
+| `Masks/` | masques de personne et boîtes de visage |
+| `Composed/` | sorties pleine résolution (`Final_Taupe35*.png` = le choix du 17 October 2026) |
+| `Sheet*.png`, `GradeSheet*.png` | planches de comparaison |
+
+## Le choix du 17 October 2026
+
+Image 5 (`Sources/matthieu pro 4.png`), fond Taupe à 35 %, peau naturelle, bras recadré (4 % du bas), formats exportés dans `Composed/Final_Taupe35*.png`. Valeurs :
+
+```json
+{"tool":"skin-bg-picker/1","source":"5","skin":{"blue_to_natural":1,"hue_fine_deg":0,"saturation":1.28,"light":-0.005},"shirt":{"cast_to_neutral":1},"frame":{"crop_bottom":0.04},"formats":{"zoom":1,"eye_line":0.38,"x_shift":0},"bg":{"mode":"gray","gray_tone":"Taupe","level":0.35,"gradient":1,"tint":1}}
+```
+
+## Refaire ou changer (17 October 2026)
+
+- Ouvrir `SkinBgPicker.html`, régler, « Copier les valeurs », puis `python3 Scripts/Compose.py '<valeurs>' [sortie.png]` : la pleine résolution et tous les formats sortent à côté. (17 October 2026)
+- Les scripts calculent leur dossier racine depuis leur emplacement : le dossier peut être renommé ou déplacé sans rien casser. Les sources sont lues dans `Sources/`. (17 October 2026)
+
+## Limites connues (17 October 2026)
+
+- Le navigateur et Python donnent les mêmes pixels à 0,3 sur 255 près (mesuré sur les moyennes par zone). (17 October 2026)
+- Pas de test de l'ouverture du HTML en double-clic (file://) : testé seulement via localhost. (17 October 2026)
+- Lisibilité en petit format (LinkedIn 400 px) non testée. (17 October 2026)
