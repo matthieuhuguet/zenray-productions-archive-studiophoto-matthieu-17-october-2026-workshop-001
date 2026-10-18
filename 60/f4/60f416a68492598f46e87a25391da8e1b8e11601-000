@@ -6,6 +6,7 @@
 <title>Skin Bg Picker</title>
 <!-- 17 October 2026. Sliders for skin hue and background. Maths identical to Scripts/Compose.py. -->
 <style>
+/*__FONTS__*/
 :root{
   --bg:#f4f4f2; --panel:#ffffff; --ink:#1b1b1a; --muted:#6c6c68; --line:#dcdcd7; --accent:#cc7c5e; --accent-ink:#ffffff;
   --sans:'InterVariable','Inter','Hiragino Sans W4','Hiragino Sans',system-ui,sans-serif;
@@ -16,18 +17,18 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141413;--panel:#1d1d1b;--ink:#ecebe8;--muted:#9a9993;--line:#34332f;}}
 :root[data-theme="dark"]{--bg:#141413;--panel:#1d1d1b;--ink:#ecebe8;--muted:#9a9993;--line:#34332f;}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 14px/1.45 var(--sans);}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 14px/1.45 var(--sans);}
 .wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:var(--gap);padding:var(--gap);max-width:1500px;margin:0 auto;align-items:start}
 @media (max-width:860px){.wrap{grid-template-columns:1fr}}
 .stage{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;justify-content:center;position:sticky;top:var(--gap)}
 canvas{max-width:100%;max-height:calc(100vh - 80px);height:auto;border-radius:8px;display:block}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:14px}
-h2{margin:0;font:400 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h2{margin:0;font:500 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline}
 .row label{font-size:13px}
-.row output{font:400 13px var(--serif);font-variant-numeric:tabular-nums;color:var(--muted)}
+.row output{font:500 13px var(--serif);font-variant-numeric:tabular-nums;color:var(--muted)}
 .row input[type=range]{grid-column:1/3;width:100%;accent-color:var(--accent)}
-select,button,textarea{font:400 13px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+select,button,textarea{font:500 13px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
 select{width:100%}
 button{cursor:pointer}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}

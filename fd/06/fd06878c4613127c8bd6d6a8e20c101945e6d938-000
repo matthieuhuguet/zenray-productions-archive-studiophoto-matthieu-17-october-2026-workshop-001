@@ -1,0 +1,30 @@
+{
+  "_doc": "18 October 2026. Starting state of SkinBgPicker2.html (image 2 of the matthieu10 sheet): the red debug view, so the mask and the cyan skin tint can be checked first; the previous picks are pasted with 'Coller des valeurs' (see README).",
+  "start": {
+    "source": "10"
+  },
+  "sheet_tones": [
+    "Chaud",
+    "Froid",
+    "Ardoise",
+    "Taupe"
+  ],
+  "formats": [
+    [
+      "1:1",
+      1.0
+    ],
+    [
+      "4:5",
+      0.8
+    ],
+    [
+      "16:9",
+      1.7777777777777777
+    ],
+    [
+      "9:16",
+      0.5625
+    ]
+  ]
+}

@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project folder = parent of Scripts/, survives any rename (17 October 2026)
-SOURCES = {"5": f"{ROOT}/Sources/matthieu pro 4.png", "3": f"{ROOT}/Sources/image pro matthieu 3.png"}   # originals moved from Downloads, 17 October 2026
+SOURCES = {"5": f"{ROOT}/Sources/matthieu pro 4.png", "3": f"{ROOT}/Sources/image pro matthieu 3.png", "10": f"{ROOT}/Sources/matthieu10-split/matthieu10-img2-top-right.png"}   # originals moved from Downloads, 17 October 2026
 GRAYS = {"Neutre": (0, 0.0), "Chaud": (55, 0.011), "Froid": (250, 0.007), "Ardoise": (255, 0.028), "Taupe": (70, 0.018)}  # (hue deg, chroma)
 DEFAULTS = {"source": "5",
   "skin":  {"blue_to_natural": 0.0, "hue_fine_deg": 0.0, "saturation": 1.0, "light": 0.0},

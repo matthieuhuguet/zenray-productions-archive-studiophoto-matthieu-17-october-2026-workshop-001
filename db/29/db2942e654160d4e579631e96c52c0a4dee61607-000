@@ -1,20 +1,27 @@
 # Build SkinBgPicker.html: embeds preview photos + masks (data URIs) into the template. 17 October 2026
 # FR : assemble l'outil à curseurs autonome (images d'aperçu et masques intégrés en base64, aucun serveur nécessaire).
-import base64, io, json, os, sys
+import argparse, base64, io, json, os, sys
 from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
 from Compose import ROOT, SOURCES, GRAYS, DEFAULTS
-LONG_SIDE = 1000   # preview long side in px (the tool previews at this size, Compose.py renders full resolution)
+LONG_SIDE = 1000   # preview long side in px, never above the native size (the tool previews at this size, Compose.py renders full resolution)
+FONTS = {"InterVariable": ("InterVariable.woff2", "100 900", "normal"), "AnthropicSerif": ("AnthropicSerif-Romans.woff2", "300 800", "normal"), "AnthropicMono": ("AnthropicMono.woff2", "300 800", "normal")}
+FONT_DIR = "/Users/zenray/Create/Build/Productions/GithubProductions/ZenRayProgress/public/fonts"   # 18 October 2026: fonts are served by the product, never left to the system
+ap = argparse.ArgumentParser(); ap.add_argument("--sources", nargs="*", default=list(SOURCES)); ap.add_argument("--out", default="SkinBgPicker.html"); ap.add_argument("--presets", default="Presets.json")
+ar = ap.parse_args()
 def uri(im): b = io.BytesIO(); im.save(b, "PNG", optimize=True); return "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()
 assets = {}
-for sid, path in SOURCES.items():
-    im = Image.open(path).convert("RGB"); s = LONG_SIDE / max(im.size); size = (round(im.width * s), round(im.height * s))
+for sid in ar.sources:
+    path = SOURCES[sid]
+    im = Image.open(path).convert("RGB"); s = min(1.0, LONG_SIDE / max(im.size)); size = (round(im.width * s), round(im.height * s))
     ph = im.resize(size, Image.LANCZOS); mk = Image.open(f"{ROOT}/Masks/Src{sid}_person.png").convert("L").resize(size, Image.LANCZOS)
     ph.save(f"{ROOT}/Preview/Src{sid}_photo.png"); mk.save(f"{ROOT}/Preview/Src{sid}_mask.png")
     fj = json.load(open(f"{ROOT}/Masks/Src{sid}_face.json")); fx, fy, fw, fh = fj["face"]; fn = [fx / fj["width"], fy / fj["height"], fw / fj["width"], fh / fj["height"]]
     eyes = [(fj["left_eye"][0] + fj["right_eye"][0]) / 2 / fj["width"], (fj["left_eye"][1] + fj["right_eye"][1]) / 2 / fj["height"]]
     assets[sid] = {"eyes": eyes, "face": fn, "photo": uri(ph), "mask": uri(mk), "w": size[0], "h": size[1], "label": os.path.basename(path)}
 html = open(f"{ROOT}/Scripts/SkinBgPicker.template.html").read()
-PRESETS = json.load(open(f"{ROOT}/Presets.json"))
+PRESETS = json.load(open(f"{ROOT}/{ar.presets}"))
+fonts_css = "\n".join("@font-face{font-family:'%s';src:url(data:font/woff2;base64,%s) format('woff2');font-weight:%s;font-style:%s;font-display:swap}" % (fam, base64.b64encode(open(f"{FONT_DIR}/{f}", "rb").read()).decode(), w, st) for fam, (f, w, st) in FONTS.items())
+html = html.replace("/*__FONTS__*/", fonts_css)
 html = html.replace("__PRESETS__", json.dumps(PRESETS)).replace("__ASSETS__", json.dumps(assets)).replace("__DEFAULTS__", json.dumps(DEFAULTS)).replace("__GRAYS__", json.dumps(GRAYS))
-open(f"{ROOT}/SkinBgPicker.html", "w").write(html); print(f"{ROOT}/SkinBgPicker.html", round(len(html) / 1e6, 2), "MB")
+out = f"{ROOT}/{ar.out}"; open(out, "w").write(html); print(out, round(len(html) / 1e6, 2), "MB")

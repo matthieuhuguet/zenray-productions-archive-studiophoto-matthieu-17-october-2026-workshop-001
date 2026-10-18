@@ -35,3 +35,19 @@ Image 5 (`Sources/matthieu pro 4.png`), fond Taupe à 35 %, peau naturelle, bras
 - Le navigateur et Python donnent les mêmes pixels à 0,3 sur 255 près (mesuré sur les moyennes par zone). (17 October 2026)
 - Pas de test de l'ouverture du HTML en double-clic (file://) : testé seulement via localhost. (17 October 2026)
 - Lisibilité en petit format (LinkedIn 400 px) non testée. (17 October 2026)
+
+## 18 October 2026 : image 2 de la planche matthieu10 et Index2
+
+| Fichier | Contenu |
+|---|---|
+| `Sources/matthieu10.png` | la planche 2 × 2 d'origine (1254 × 1254), déplacée de Downloads le 18 October 2026 |
+| `Sources/matthieu10-split/` | les quatre portraits découpés (séparateurs blancs mesurés : colonnes 625 à 628, lignes 623 à 627, marge de 1 px), dont `matthieu10-img2-top-right.png` (624 × 622), l'image choisie |
+| `Index2/index.html` | l'outil à curseurs pour cette image, démarrant sur la vue debug rouge (masque et teint cyan), polices embarquées en Medium 500 |
+| `Masks/Src10_person.png`, `Masks/Src10_face.json`, `Masks/Src10_overlay.png` | masque, visage et vue rouge de contrôle |
+| `Presets2.json` | état de départ de l'Index2 |
+| `Composed/Src10_Taupe35_previous-picks.png` | les derniers réglages de peau et de fond (Taupe 35 %) appliqués à cette image, à titre d'exemple |
+
+- Reconstruire : `python3 Scripts/BuildPicker.py --sources 10 --out Index2/index.html --presets Presets2.json`. (18 October 2026)
+- Rendre en pleine résolution : `python3 Scripts/Compose.py '<valeurs copiées>'` avec `"source":"10"`. (18 October 2026)
+- Les derniers réglages de la première image, à coller dans l'Index2 par « Coller des valeurs » (ajouter `"source":"10"`) : `{"skin":{"blue_to_natural":1,"hue_fine_deg":0,"saturation":1.28,"light":-0.005},"shirt":{"cast_to_neutral":1},"bg":{"mode":"gray","gray_tone":"Taupe","level":0.35,"gradient":1,"tint":1}}`. (18 October 2026)
+- Limite : la planche d'origine fait 1254 px, donc chaque portrait n'a que 624 px de large ; les formats 1:1, 4:5, 16:9 et 9:16 sortent plus petits que ceux de la première image. (18 October 2026)
