@@ -1,0 +1,48 @@
+{
+  "_doc": "21 October 2026. Orange test: image 2 of matthieu10, previous skin picks, solid background #f66c00 (mode color, gradient 0 = exactly that colour).",
+  "start": {
+    "source": "10",
+    "skin": {
+      "blue_to_natural": 1,
+      "hue_fine_deg": 0,
+      "saturation": 1.33,
+      "light": 0
+    },
+    "shirt": {
+      "cast_to_neutral": 1
+    },
+    "frame": {
+      "crop_bottom": 0
+    },
+    "bg": {
+      "mode": "color",
+      "color": "#f66c00",
+      "color_light": 0,
+      "color_gradient": 0
+    }
+  },
+  "sheet_tones": [
+    "Chaud",
+    "Froid",
+    "Ardoise",
+    "Taupe"
+  ],
+  "formats": [
+    [
+      "1:1",
+      1.0
+    ],
+    [
+      "4:5",
+      0.8
+    ],
+    [
+      "16:9",
+      1.7777777777777777
+    ],
+    [
+      "9:16",
+      0.5625
+    ]
+  ]
+}
