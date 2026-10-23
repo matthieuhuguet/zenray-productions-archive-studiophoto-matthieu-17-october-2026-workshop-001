@@ -1,0 +1,53 @@
+{
+  "_doc": "23 October 2026. Radial gradient test on the last photo (source 10): centre #ffa000, outside #ff5c02. Skin and shirt values are the ones of the orange test (saturation 1.5, light 0.02, shirt neutral 1).",
+  "start": {
+    "source": "10",
+    "skin": {
+      "blue_to_natural": 1,
+      "hue_fine_deg": 0,
+      "saturation": 1.5,
+      "light": 0.02
+    },
+    "shirt": {
+      "cast_to_neutral": 1
+    },
+    "frame": {
+      "crop_bottom": 0
+    },
+    "bg": {
+      "mode": "radial",
+      "color": "#ffa000",
+      "color_edge": "#ff5c02",
+      "grad_cx": 0.5,
+      "grad_cy": 0.4,
+      "grad_radius": 0.9,
+      "grad_curve": 1.0,
+      "color_light": 0.0,
+      "color_gradient": 0.0
+    }
+  },
+  "sheet_tones": [
+    "Chaud",
+    "Froid",
+    "Ardoise",
+    "Taupe"
+  ],
+  "formats": [
+    [
+      "1:1",
+      1.0
+    ],
+    [
+      "4:5",
+      0.8
+    ],
+    [
+      "16:9",
+      1.7777777777777777
+    ],
+    [
+      "9:16",
+      0.5625
+    ]
+  ]
+}

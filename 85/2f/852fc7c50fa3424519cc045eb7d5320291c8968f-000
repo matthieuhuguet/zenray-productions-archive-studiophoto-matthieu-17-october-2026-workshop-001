@@ -13,7 +13,8 @@ DEFAULTS = {"source": "5",
   "shirt": {"cast_to_neutral": 0.0},
   "frame": {"crop_bottom": 0.0},
   "formats": {"zoom": 1.0, "eye_line": 0.38, "x_shift": 0.0},
-  "bg":    {"mode": "red", "red_hue_shift_deg": 0.0, "red_saturation": 1.0, "gray_tone": "Neutre", "level": 0.35, "gradient": 1.0, "tint": 1.0, "color": "#f66c00", "color_light": 0.0, "color_gradient": 0.0}}
+  "bg":    {"mode": "red", "red_hue_shift_deg": 0.0, "red_saturation": 1.0, "gray_tone": "Neutre", "level": 0.35, "gradient": 1.0, "tint": 1.0, "color": "#f66c00", "color_light": 0.0, "color_gradient": 0.0,
+          "color_edge": "#ff5c02", "grad_cx": 0.5, "grad_cy": 0.4, "grad_radius": 0.9, "grad_curve": 1.0}}
 
 def merged(p):
     out = json.loads(json.dumps(DEFAULTS))
@@ -67,6 +68,15 @@ def compose(a255, m, P, face=None):
         _, tc, th = lch(tgt); Lbar = Lo[m < 0.02].mean()
         Lc = np.clip(tgt[0] + BG["color_light"] + (Lo - Lbar) * BG["color_gradient"], 0, 1)
         B_ = lab_to_srgb(mk(Lc, np.full_like(Lc, tc), np.full_like(Lc, th)))
+    elif BG["mode"] == "radial":   # 23 October 2026: radial gradient, `color` at the centre to `color_edge` outside, mixed in OKLab; distance in image heights
+        hx = BG["color"].lstrip("#"); hy = BG["color_edge"].lstrip("#")
+        c0 = srgb_to_lab(np.array([int(hx[i:i + 2], 16) for i in (0, 2, 4)], dtype=np.float64)); c1 = srgb_to_lab(np.array([int(hy[i:i + 2], 16) for i in (0, 2, 4)], dtype=np.float64))
+        Hh, Ww = Lo.shape; yy, xx = np.mgrid[0:Hh, 0:Ww]
+        dist = np.hypot((xx + 0.5 - BG["grad_cx"] * Ww) / Hh, (yy + 0.5) / Hh - BG["grad_cy"])
+        t = np.clip(dist / BG["grad_radius"], 0, 1) ** BG["grad_curve"]; Lbar = Lo[m < 0.02].mean()
+        lab = c0 + (c1 - c0) * t[..., None]
+        lab[..., 0] = np.clip(lab[..., 0] + BG["color_light"] + (Lo - Lbar) * BG["color_gradient"], 0, 1)
+        B_ = lab_to_srgb(lab)
     else:
         hue, c0 = GRAYS[BG["gray_tone"]]
         Lbar = Lo[m < 0.02].mean()

@@ -100,13 +100,21 @@ const SPEC = [
   {host:"formatsControls", path:"formats.zoom", label:"Zoom", min:1, max:2.5, step:0.01, fmt:v=>v.toFixed(2)+"×"},
   {host:"formatsControls", path:"formats.eye_line", label:"Hauteur des yeux dans le cadre", min:0.2, max:0.6, step:0.005, fmt:v=>Math.round(v*100)+" %"},
   {host:"formatsControls", path:"formats.x_shift", label:"Décalage horizontal", min:-0.3, max:0.3, step:0.005, fmt:v=>(v>0?"+":"")+(v*100).toFixed(1)+" %"},
-  {sec:"Fond", path:"bg.mode", type:"select", label:"Fond", options:[["red","Rouge (debug)"],["gray","Gris"],["color","Couleur unie"]]},
+  {sec:"Fond", path:"bg.mode", type:"select", label:"Fond", options:[["red","Rouge (debug)"],["gray","Gris"],["color","Couleur unie"],["radial","Dégradé radial"]]},
   {sec:"Fond", path:"bg.red_hue_shift_deg", label:"Teinte du rouge", min:-180, max:180, step:1, fmt:v=>v+"°", when:"red"},
   {sec:"Fond", path:"bg.red_saturation", label:"Saturation du rouge", min:0, max:2, step:0.01, fmt:v=>v.toFixed(2), when:"red"},
   {sec:"Fond", path:"bg.gray_tone", type:"select", label:"Nuance de gris", options:Object.keys(GRAYS).map(k=>[k,k]), when:"gray"},
   {sec:"Fond", path:"bg.level", label:"Noir ↔ blanc", min:0, max:1, step:0.005, fmt:v=>Math.round(v*100)+" %", when:"gray"},
   {sec:"Fond", path:"bg.gradient", label:"Dégradé de l'original", min:0, max:1, step:0.01, fmt:v=>Math.round(v*100)+" %", when:"gray"},
   {sec:"Fond", path:"bg.color", type:"color", label:"Couleur du fond", when:"color"},
+  {sec:"Fond", path:"bg.color", type:"color", label:"Couleur du centre", when:"radial"},
+  {sec:"Fond", path:"bg.color_edge", type:"color", label:"Couleur de l'extérieur", when:"radial"},
+  {sec:"Fond", path:"bg.grad_cx", label:"Centre du dégradé (X)", min:0, max:1, step:0.005, fmt:v=>Math.round(v*100)+" %", when:"radial"},
+  {sec:"Fond", path:"bg.grad_cy", label:"Centre du dégradé (Y)", min:0, max:1, step:0.005, fmt:v=>Math.round(v*100)+" %", when:"radial"},
+  {sec:"Fond", path:"bg.grad_radius", label:"Rayon du dégradé", min:0.2, max:2, step:0.01, fmt:v=>v.toFixed(2)+" hauteurs", when:"radial"},
+  {sec:"Fond", path:"bg.grad_curve", label:"Courbe (centre ↔ bord)", min:0.4, max:3, step:0.05, fmt:v=>v.toFixed(2), when:"radial"},
+  {sec:"Fond", path:"bg.color_light", label:"Lumière du fond", min:-0.3, max:0.3, step:0.005, fmt:v=>(v>0?"+":"")+v.toFixed(3), when:"radial"},
+  {sec:"Fond", path:"bg.color_gradient", label:"Dégradé de l'original", min:0, max:1, step:0.01, fmt:v=>Math.round(v*100)+" %", when:"radial"},
   {sec:"Fond", path:"bg.color_light", label:"Lumière du fond", min:-0.3, max:0.3, step:0.005, fmt:v=>(v>0?"+":"")+v.toFixed(3), when:"color"},
   {sec:"Fond", path:"bg.color_gradient", label:"Dégradé de l'original", min:0, max:1, step:0.01, fmt:v=>Math.round(v*100)+" %", when:"color"},
   {sec:"Fond", path:"bg.tint", label:"Intensité de la nuance", min:0, max:2, step:0.01, fmt:v=>v.toFixed(2), when:"gray"},
@@ -182,6 +190,10 @@ function computeBgInto(buf,B){
     for(let i=0;i<N;i++){ const C=Cb[i]*B.red_saturation, h=Hb[i]+sh; toSrgb(Lb[i],C*Math.cos(h),C*Math.sin(h),buf,i*3); }
   } else if(B.mode==="color"){ const hx=B.color.replace("#",""), t=lab(parseInt(hx.slice(0,2),16),parseInt(hx.slice(2,4),16),parseInt(hx.slice(4,6),16)), ca=t[1], cb=t[2];   // 21 October 2026: solid colour
     for(let i=0;i<N;i++){ const L=Math.min(1,Math.max(0,t[0]+B.color_light+(Lo[i]-Lbar)*B.color_gradient)); toSrgb(L,ca,cb,buf,i*3); }
+  } else if(B.mode==="radial"){   // 23 October 2026: radial gradient, centre colour to edge colour in OKLab, distance in image heights (same maths as Compose.py)
+    const px=h=>{const x=h.replace("#","");return lab(parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16));}, c0=px(B.color), c1=px(B.color_edge);
+    for(let i=0;i<N;i++){ const y=(i/W|0), x=i-y*W, d=Math.hypot((x+0.5-B.grad_cx*W)/H,(y+0.5)/H-B.grad_cy), t=Math.pow(Math.min(1,Math.max(0,d/B.grad_radius)),B.grad_curve);
+      const L=Math.min(1,Math.max(0,c0[0]+(c1[0]-c0[0])*t+B.color_light+(Lo[i]-Lbar)*B.color_gradient)); toSrgb(L,c0[1]+(c1[1]-c0[1])*t,c0[2]+(c1[2]-c0[2])*t,buf,i*3); }
   } else { const g=GRAYS[B.gray_tone], h=g[0]*Math.PI/180, C=g[1]*B.tint, ca=C*Math.cos(h), cb=C*Math.sin(h);
     for(let i=0;i<N;i++){ const L=Math.min(1,Math.max(0,B.level+(Lo[i]-Lbar)*B.gradient)); toSrgb(L,ca,cb,buf,i*3); }
   }
